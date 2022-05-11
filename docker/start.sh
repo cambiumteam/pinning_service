@@ -1,0 +1,1 @@
+docker compose -f ./localnet.yml -f ./docker-compose.yml up
