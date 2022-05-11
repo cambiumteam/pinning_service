@@ -120,14 +120,4 @@ EXPOSE 26656 \
        9090  \
        8080
 
-# # Install AWS
-# RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-#   && unzip awscliv2.zip -d /usr/src && rm -f awscliv2.zip \
-#   && /usr/src/aws/install --bin-dir /usr/bin
-
-# # Copy scripts
-# COPY run.sh snapshot.sh /usr/bin/
-# RUN chmod +x /usr/bin/run.sh /usr/bin/snapshot.sh
-# ENTRYPOINT ["run.sh"]
-
 CMD $START_CMD

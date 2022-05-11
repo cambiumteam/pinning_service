@@ -3,7 +3,7 @@ version: "3"
 services:
   regennode0:
     container_name: regennode0
-    image: "ghcr.io/cambiumteam/pinning_service:regen-env"
+    image: "ghcr.io/cambiumteam/regen-localnet-node"
     ports:
       - "26656-26657:26656-26657"
       - "1317:1317"
@@ -24,7 +24,7 @@ services:
 
   regennode1:
     container_name: regennode1
-    image: "ghcr.io/cambiumteam/pinning_service:regen-env"
+    image: "ghcr.io/cambiumteam/regen-localnet-node"
     ports:
       - "26666-26667:26656-26657"
       - "1318:1317"
@@ -45,7 +45,7 @@ services:
 
   regennode2:
     container_name: regennode2
-    image: "ghcr.io/cambiumteam/pinning_service:regen-env"
+    image: "ghcr.io/cambiumteam/regen-localnet-node"
     environment:
       - DEBUG=1
       - ID=2
@@ -66,7 +66,7 @@ services:
 
   regennode3:
     container_name: regennode3
-    image: "ghcr.io/cambiumteam/pinning_service:regen-env"
+    image: "ghcr.io/cambiumteam/regen-localnet-node"
     environment:
       - DEBUG=1
       - ID=3
