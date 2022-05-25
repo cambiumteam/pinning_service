@@ -7,8 +7,7 @@ from fastapi import FastAPI, Body, HTTPException, Request, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pyld import jsonld
-from rdflib import ConjunctiveGraph, URIRef, Literal, Dataset, BNode
-from datetime import datetime
+from rdflib import ConjunctiveGraph, BNode
 from rdflib.plugin import PluginException
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore, _node_to_sparql
 import sqlalchemy
@@ -16,6 +15,7 @@ from sqlalchemy import select
 import uvicorn
 
 from config import get_settings, Settings
+from graph import add_graph_to_store
 
 # Settings dependency.
 settings = get_settings()
@@ -126,20 +126,6 @@ async def get_resource(iri: str, request: Request):
     return Response(serialized, media_type=accept)
 
 
-
-def add_graph_to_store(iri, serialized_graph, store, format='application/n-quads'):
-    ds = Dataset(store=store)
-    # add named graph to dataset
-    g = ds.add_graph(URIRef(f'{settings.GRAPH_DB_BASE_URL}/data/{iri}'))
-    g.parse(data=serialized_graph, format=format)
-    # add triple to default graph manifest
-    ds.add((
-        URIRef(f'{settings.GRAPH_DB_BASE_URL}/data/{iri}'),
-        URIRef('http://purl.org/dc/elements/1.1/date'),
-        Literal(datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")),
-    ))
-
-
 # Create new resource.
 @app.post("/resource")
 async def post_resource(
@@ -167,7 +153,7 @@ async def post_resource(
     iri = f"regen:{base64_hash.decode()[0:10]}.rdf"
 
     if settings.USE_GRAPH_STORE:
-        add_graph_to_store(iri, normalized, store=sparql_store)
+        add_graph_to_store(iri, normalized, store=sparql_store, base_url=settings.GRAPH_DB_BASE_URL)
 
     final = {
         "iri": iri,
