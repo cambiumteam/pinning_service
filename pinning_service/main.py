@@ -2,7 +2,6 @@ import base64
 from typing import Any
 import hashlib
 
-import databases
 from fastapi import FastAPI, Body, HTTPException, Request, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
@@ -14,23 +13,11 @@ from sqlalchemy import select
 import uvicorn
 
 from config import get_settings, Settings
+from database import database, metadata, resources
 from graph import add_graph_to_store
 
 # Settings dependency.
 settings = get_settings()
-
-# SQLite database.
-database = databases.Database(settings.DATABASE_URL)
-
-# Build resource table.
-metadata = sqlalchemy.MetaData()
-resources = sqlalchemy.Table(
-    "resource",
-    metadata,
-    sqlalchemy.Column("iri", sqlalchemy.Text, primary_key=True),
-    sqlalchemy.Column("hash", sqlalchemy.LargeBinary(length=32), primary_key=True),
-    sqlalchemy.Column("data", sqlalchemy.Text)
-)
 
 # Create tables.
 engine = sqlalchemy.create_engine(
