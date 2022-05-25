@@ -7,9 +7,8 @@ from fastapi import FastAPI, Body, HTTPException, Request, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pyld import jsonld
-from rdflib import ConjunctiveGraph, BNode
+from rdflib import ConjunctiveGraph
 from rdflib.plugin import PluginException
-from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore, _node_to_sparql
 import sqlalchemy
 from sqlalchemy import select
 import uvicorn
@@ -70,26 +69,6 @@ responses = {
         "description": "Serialized RDF data",
     },
 }
-
-
-# handle RDF BNodes
-# see https://github.com/RDFLib/rdflib/blob/d3689cf8a9912a352d16570cc5adf74eb391c268/rdflib/plugins/stores/sparqlstore.py#L66
-def bnode_ext(node):
-    if isinstance(node, BNode):
-        return '<bnode:b%s>' % node
-    return _node_to_sparql(node)
-
-
-def create_sparql_store():
-    return SPARQLUpdateStore(
-        query_endpoint=f"{settings.GRAPH_DB_BASE_URL}/query",
-        update_endpoint=f"{settings.GRAPH_DB_BASE_URL}/update",
-        auth=(settings.GRAPH_DB_USERNAME, settings.GRAPH_DB_PASSWORD),
-        node_to_sparql=bnode_ext
-    )
-
-
-sparql_store = create_sparql_store()
 
 
 @app.get('/resources', response_class=JSONResponse)
@@ -153,7 +132,7 @@ async def post_resource(
     iri = f"regen:{base64_hash.decode()[0:10]}.rdf"
 
     if settings.USE_GRAPH_STORE:
-        add_graph_to_store(iri, normalized, store=sparql_store, base_url=settings.GRAPH_DB_BASE_URL)
+        add_graph_to_store(iri, normalized, settings)
 
     final = {
         "iri": iri,
