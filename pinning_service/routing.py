@@ -99,9 +99,6 @@ async def post_resource(
     # @TODO Query regen for the IRI.
     iri = f"regen:{base64_hash.decode()[0:10]}.rdf"
 
-    if settings.USE_GRAPH_STORE:
-        add_graph_to_store(iri, normalized, settings)
-
     final = {
         "iri": iri,
         "hash": digest,
@@ -113,5 +110,8 @@ async def post_resource(
     except Exception as e:
         # @TODO Improve handling of duplicate data.
         return HTTPException(status_code=422, detail=e.args)
+
+    if settings.USE_GRAPH_STORE:
+        add_graph_to_store(iri, normalized, settings)
 
     return {"iri": iri, "hash": base64_hash, "data": normalized}
