@@ -3,7 +3,7 @@ from typing import Any
 import hashlib
 
 import databases
-from fastapi import FastAPI, Body, HTTPException, Request, Response
+from fastapi import FastAPI, Body, HTTPException, Request, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pyld import jsonld
@@ -15,10 +15,10 @@ import sqlalchemy
 from sqlalchemy import select
 import uvicorn
 
-from config import Settings
+from config import get_settings, Settings
 
-# Instantiate settings.
-settings = Settings()
+# Settings dependency.
+settings = get_settings()
 
 # SQLite database.
 database = databases.Database(settings.DATABASE_URL)
@@ -142,7 +142,10 @@ def add_graph_to_store(iri, serialized_graph, store, format='application/n-quads
 
 # Create new resource.
 @app.post("/resource")
-async def post_resource(data: Any = Body(..., media_type='application/ld+json')):
+async def post_resource(
+        data: Any = Body(..., media_type='application/ld+json'),
+        settings: Settings = Depends(get_settings),
+):
 
     # Canonicalization.
     try:

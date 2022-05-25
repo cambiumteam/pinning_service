@@ -1,4 +1,7 @@
+from functools import lru_cache
+
 from pydantic import BaseSettings, validator, AnyHttpUrl
+
 
 class Settings(BaseSettings):
 
@@ -18,3 +21,9 @@ class Settings(BaseSettings):
             and values.get("GRAPH_DB_USERNAME")
             and values.get("GRAPH_DB_PASSWORD")
         )
+
+
+# Settings dependency.
+@lru_cache()
+def get_settings():
+    return Settings()
