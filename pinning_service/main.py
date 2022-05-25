@@ -21,8 +21,7 @@ from config import Settings
 settings = Settings()
 
 # SQLite database.
-DATABASE_URL = "sqlite:///./test.db"
-database = databases.Database(DATABASE_URL)
+database = databases.Database(settings.DATABASE_URL)
 
 # Build resource table.
 metadata = sqlalchemy.MetaData()
@@ -36,7 +35,7 @@ resources = sqlalchemy.Table(
 
 # Create tables.
 engine = sqlalchemy.create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}
+    settings.DATABASE_URL, connect_args={"check_same_thread": False}
 )
 metadata.create_all(engine)
 

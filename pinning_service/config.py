@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     class Config:
         env_file = '.env'
 
+    DATABASE_URL: str
+
     GRAPH_DB_BASE_URL: AnyHttpUrl = None
     GRAPH_DB_USERNAME: str = None
     GRAPH_DB_PASSWORD: str = None
