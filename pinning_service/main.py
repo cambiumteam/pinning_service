@@ -4,12 +4,22 @@ import hashlib
 
 import databases
 from fastapi import FastAPI, Body, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from pyld import jsonld
-from rdflib import ConjunctiveGraph
+from rdflib import ConjunctiveGraph, URIRef, Literal, Dataset, BNode
+from datetime import datetime
 from rdflib.plugin import PluginException
+from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore, _node_to_sparql
 import sqlalchemy
 from sqlalchemy import select
 import uvicorn
+
+
+USE_GRAPH_STORE = True
+GRAPH_DB_BASE_URL = "http://localhost:3030/resources"
+GRAPH_DB_USERNAME = "admin"
+GRAPH_DB_PASSWORD = "admin"
 
 # SQLite database.
 DATABASE_URL = "sqlite:///./test.db"
@@ -64,6 +74,37 @@ responses = {
 }
 
 
+# handle RDF BNodes
+# see https://github.com/RDFLib/rdflib/blob/d3689cf8a9912a352d16570cc5adf74eb391c268/rdflib/plugins/stores/sparqlstore.py#L66
+def bnode_ext(node):
+    if isinstance(node, BNode):
+        return '<bnode:b%s>' % node
+    return _node_to_sparql(node)
+
+
+def create_sparql_store():
+    return SPARQLUpdateStore(
+        query_endpoint=f"{GRAPH_DB_BASE_URL}/query",
+        update_endpoint=f"{GRAPH_DB_BASE_URL}/update",
+        auth=(GRAPH_DB_USERNAME, GRAPH_DB_PASSWORD),
+        node_to_sparql=bnode_ext
+    )
+
+
+sparql_store = create_sparql_store()
+
+
+@app.get('/resources', response_class=JSONResponse)
+async def get_resources():
+    data = await database.fetch_all(query=select(resources))
+    resp = jsonable_encoder([{
+        'iri': resource.iri,
+        'hash': base64.urlsafe_b64encode(resource.hash),
+        'data': resource.data,
+    } for resource in data])
+    return JSONResponse(resp)
+
+
 # Get resource by IRI.
 @app.get("/resource/{iri}", response_class=JsonLdResponse, responses=responses)
 async def get_resource(iri: str, request: Request):
@@ -85,6 +126,20 @@ async def get_resource(iri: str, request: Request):
         raise HTTPException(status_code=406)
 
     return Response(serialized, media_type=accept)
+
+
+
+def add_graph_to_store(iri, serialized_graph, store, format='application/n-quads'):
+    ds = Dataset(store=store)
+    # add named graph to dataset
+    g = ds.add_graph(URIRef(f'{GRAPH_DB_BASE_URL}/data/{iri}'))
+    g.parse(data=serialized_graph, format=format)
+    # add triple to default graph manifest
+    ds.add((
+        URIRef(f'{GRAPH_DB_BASE_URL}/data/{iri}'), 
+        URIRef('http://purl.org/dc/elements/1.1/date'),
+        Literal(datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")),
+    ))
 
 
 # Create new resource.
@@ -109,6 +164,9 @@ async def post_resource(data: Any = Body(..., media_type='application/ld+json'))
     # Get the IRI.
     # @TODO Query regen for the IRI.
     iri = f"regen:{base64_hash.decode()[0:10]}.rdf"
+
+    if USE_GRAPH_STORE:
+        add_graph_to_store(iri, normalized, store=sparql_store)
 
     final = {
         "iri": iri,
