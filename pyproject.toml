@@ -12,7 +12,7 @@ rdflib = "^6.1.1"
 uvicorn = "^0.17.6"
 databases = "^0.5.5"
 SQLAlchemy = "^1.4.34"
-pydantic = "^1.9.0"
+pydantic = {extras = ["dotenv"], version = "^1.9.1"}
 aiosqlite = "^0.17.0"
 PyLD = "^2.0.3"
 

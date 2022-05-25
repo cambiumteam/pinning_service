@@ -15,11 +15,10 @@ import sqlalchemy
 from sqlalchemy import select
 import uvicorn
 
+from config import Settings
 
-USE_GRAPH_STORE = True
-GRAPH_DB_BASE_URL = "http://localhost:3030/resources"
-GRAPH_DB_USERNAME = "admin"
-GRAPH_DB_PASSWORD = "admin"
+# Instantiate settings.
+settings = Settings()
 
 # SQLite database.
 DATABASE_URL = "sqlite:///./test.db"
@@ -84,9 +83,9 @@ def bnode_ext(node):
 
 def create_sparql_store():
     return SPARQLUpdateStore(
-        query_endpoint=f"{GRAPH_DB_BASE_URL}/query",
-        update_endpoint=f"{GRAPH_DB_BASE_URL}/update",
-        auth=(GRAPH_DB_USERNAME, GRAPH_DB_PASSWORD),
+        query_endpoint=f"{settings.GRAPH_DB_BASE_URL}/query",
+        update_endpoint=f"{settings.GRAPH_DB_BASE_URL}/update",
+        auth=(settings.GRAPH_DB_USERNAME, settings.GRAPH_DB_PASSWORD),
         node_to_sparql=bnode_ext
     )
 
@@ -132,11 +131,11 @@ async def get_resource(iri: str, request: Request):
 def add_graph_to_store(iri, serialized_graph, store, format='application/n-quads'):
     ds = Dataset(store=store)
     # add named graph to dataset
-    g = ds.add_graph(URIRef(f'{GRAPH_DB_BASE_URL}/data/{iri}'))
+    g = ds.add_graph(URIRef(f'{settings.GRAPH_DB_BASE_URL}/data/{iri}'))
     g.parse(data=serialized_graph, format=format)
     # add triple to default graph manifest
     ds.add((
-        URIRef(f'{GRAPH_DB_BASE_URL}/data/{iri}'), 
+        URIRef(f'{settings.GRAPH_DB_BASE_URL}/data/{iri}'),
         URIRef('http://purl.org/dc/elements/1.1/date'),
         Literal(datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")),
     ))
@@ -165,7 +164,7 @@ async def post_resource(data: Any = Body(..., media_type='application/ld+json'))
     # @TODO Query regen for the IRI.
     iri = f"regen:{base64_hash.decode()[0:10]}.rdf"
 
-    if USE_GRAPH_STORE:
+    if settings.USE_GRAPH_STORE:
         add_graph_to_store(iri, normalized, store=sparql_store)
 
     final = {
