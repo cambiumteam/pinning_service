@@ -93,7 +93,7 @@ async def post_resource(
     # Hash.
     binary = normalized.encode('utf-8')
     digest = hashlib.blake2b(binary, digest_size=32).digest()
-    base64_hash = base64.urlsafe_b64encode(digest)
+    base64_hash = base64.b64encode(digest)
 
     # Get the IRI.
     # @TODO Query regen for the IRI.
