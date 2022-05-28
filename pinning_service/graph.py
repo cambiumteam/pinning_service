@@ -28,11 +28,11 @@ def add_graph_to_store(iri, serialized_graph, settings: Settings, format='applic
     store = create_sparql_store(settings)
     ds = Dataset(store=store)
     # add named graph to dataset
-    g = ds.add_graph(URIRef(f'{settings.GRAPH_DB_BASE_URL}/data/{iri}'))
+    g = ds.add_graph(URIRef(iri))
     g.parse(data=serialized_graph, format=format)
     # add triple to default graph manifest
     ds.add((
-        URIRef(f'{settings.GRAPH_DB_BASE_URL}/data/{iri}'),
+        URIRef(iri),
         URIRef('http://purl.org/dc/elements/1.1/date'),
         Literal(datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")),
     ))
