@@ -109,7 +109,7 @@ async def post_resource(
         await database.execute(query)
     except Exception as e:
         # @TODO Improve handling of duplicate data.
-        return HTTPException(status_code=422, detail=e.args)
+        raise HTTPException(status_code=422, detail=e.args)
 
     if settings.USE_GRAPH_STORE:
         add_graph_to_store(iri, normalized, settings)
