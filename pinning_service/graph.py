@@ -3,7 +3,7 @@ from datetime import datetime
 from rdflib import URIRef, Literal, Dataset, BNode
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore, _node_to_sparql
 
-from config import Settings
+from .config import Settings
 
 # handle RDF BNodes
 # see https://github.com/RDFLib/rdflib/blob/d3689cf8a9912a352d16570cc5adf74eb391c268/rdflib/plugins/stores/sparqlstore.py#L66

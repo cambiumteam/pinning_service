@@ -12,9 +12,10 @@ from rdflib import ConjunctiveGraph
 from rdflib.plugin import PluginException
 from sqlalchemy import select
 
-from config import get_settings, Settings
-from database import database, resources
-from graph import add_graph_to_store
+from .config import get_settings, Settings
+from .database import database, resources
+from .graph import add_graph_to_store
+from .regen import anchor
 
 
 # JSONLD response class.
@@ -97,6 +98,15 @@ async def post_resource(
     digest = hashlib.blake2b(binary, digest_size=32).digest()
     base64_hash = base64.b64encode(digest)
 
+    try:
+        tx = anchor(base64_hash)
+        print(tx)
+        return tx
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=503, detail="Failed to anchor to chain.")
+        
+
     # Query regen node for the IRI.
     params = {
         "hash": base64_hash,
@@ -104,26 +114,26 @@ async def post_resource(
         "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
         "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED",
     }
-    try:
-        api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
-        res = requests.get(api_url, params)
-        iri = res.json()["iri"]
-    except Exception as e:
-        raise HTTPException(status_code=503, detail="Failed to query regen node.")
+    # try:
+    #     api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
+    #     res = requests.get(api_url, params)
+    #     iri = res.json()["iri"]
+    # except Exception as e:
+    #     raise HTTPException(status_code=503, detail="Failed to query regen node.")
 
-    final = {
-        "iri": iri,
-        "hash": digest,
-        "data": normalized,
-    }
-    try:
-        query = resources.insert().values(**final)
-        await database.execute(query)
-    except Exception as e:
-        # @TODO Improve handling of duplicate data.
-        raise HTTPException(status_code=422, detail=e.args)
+    # final = {
+    #     "iri": iri,
+    #     "hash": digest,
+    #     "data": normalized,
+    # }
+    # try:
+    #     query = resources.insert().values(**final)
+    #     await database.execute(query)
+    # except Exception as e:
+    #     # @TODO Improve handling of duplicate data.
+    #     raise HTTPException(status_code=422, detail=e.args)
 
-    if settings.USE_GRAPH_STORE:
-        add_graph_to_store(iri, normalized, settings)
+    # if settings.USE_GRAPH_STORE:
+    #     add_graph_to_store(iri, normalized, settings)
 
     return {"iri": iri, "hash": base64_hash, "data": normalized}
