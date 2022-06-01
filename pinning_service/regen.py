@@ -1,5 +1,4 @@
 import os
-import subprocess
 import json
 from typing import NewType
 from .config import get_settings
@@ -58,6 +57,7 @@ def anchor(b64_hash: str) -> dict:
     # @TODO: make use of regen config passing REGEN_HOME
     result = json.loads(os.popen(broadcast_command).read())
     return result
+
 
 def get_successful_txhash(tx_result: dict) -> TxHash:
     if tx_result["code"] != 0:
