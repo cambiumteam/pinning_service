@@ -10,21 +10,24 @@ IRI = NewType('IRI', str)
 Address = NewType('Address', str)
 
 
-def generate_anchor_tx(sender: Address, b64_hash: bytes) -> dict:
+def generate_anchor_tx(sender: Address, resolver_id: int, b64_hash: bytes) -> dict:
     return {
         "body": {
             "messages": [{
-                "@type": "/regen.data.v1.MsgAnchor",
-                "sender": sender,
-                "content_hash": {
+                "@type": "/regen.data.v1.MsgRegisterResolver",
+                "manager": sender,
+                "resolver_id": resolver_id,
+                "content_hashes": [
+                  {
                     "raw": None,
                     "graph": {
-                        "hash": b64_hash.decode('utf-8'),
-                        "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
-                        "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
-                        "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED"
+                      "hash": b64_hash.decode('utf-8'),
+                      "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
+                      "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
+                      "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED"
                     }
-                }
+                  }
+                ]
             }],
             "memo": "",
             "timeout_height": "0",
@@ -50,7 +53,7 @@ def anchor(b64_hash: str) -> dict:
     chain_id = f"--chain-id {settings.REGEN_CHAIN_ID}"
     node = f"--node {settings.REGEN_NODE_TENDERMINT_RPC_URL}"
     output = "--output json"
-    tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, b64_hash)
+    tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, settings.REGEN_RESOLVER_ID, b64_hash)
     sign_command = f"echo '{json.dumps(tx)}' | {settings.REGEN_CLI_COMMAND} regen tx sign /dev/stdin --from {settings.REGEN_KEY_ADDRESS} {settings.REGEN_KEYRING_ARGS} {chain_id} {node} {output}"
     signed_tx = os.popen(sign_command).read()
     broadcast_command = f"echo '{signed_tx}' | {settings.REGEN_CLI_COMMAND} regen tx broadcast /dev/stdin {chain_id} {node} {output}"
