@@ -1,11 +1,13 @@
 import base64
 from typing import Any
 import hashlib
+from urllib.parse import urljoin
 
 from fastapi import APIRouter, Body, HTTPException, Request, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pyld import jsonld
+import requests
 from rdflib import ConjunctiveGraph
 from rdflib.plugin import PluginException
 from sqlalchemy import select
@@ -95,9 +97,19 @@ async def post_resource(
     digest = hashlib.blake2b(binary, digest_size=32).digest()
     base64_hash = base64.b64encode(digest)
 
-    # Get the IRI.
-    # @TODO Query regen for the IRI.
-    iri = f"regen:{base64_hash.decode()[0:10]}.rdf"
+    # Query regen node for the IRI.
+    params = {
+        "hash": base64_hash,
+        "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
+        "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
+        "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED",
+    }
+    try:
+        api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
+        res = requests.get(api_url, params)
+        iri = res.json()["iri"]
+    except Exception as e:
+        raise HTTPException(status_code=503, detail="Failed to query regen node.")
 
     final = {
         "iri": iri,

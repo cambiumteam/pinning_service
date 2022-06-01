@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
 
+    REGEN_NODE_REST_URL: AnyHttpUrl
+
     GRAPH_DB_BASE_URL: AnyHttpUrl = None
     GRAPH_DB_USERNAME: str = None
     GRAPH_DB_PASSWORD: str = None
