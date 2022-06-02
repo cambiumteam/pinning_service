@@ -36,6 +36,7 @@ async def get_resources():
         'iri': resource.iri,
         'hash': base64.urlsafe_b64encode(resource.hash),
         'data': resource.data,
+        'txhash': resource.txhash,
     } for resource in data])
     return JSONResponse(resp)
 
@@ -98,8 +99,9 @@ async def post_resource(
     digest = hashlib.blake2b(binary, digest_size=32).digest()
     base64_hash = base64.b64encode(digest)
 
+    # Anchor the data on-chain.
     try:
-        tx = anchor(base64_hash)
+        txhash = anchor(base64_hash)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
         
@@ -121,6 +123,7 @@ async def post_resource(
         "iri": iri,
         "hash": digest,
         "data": normalized,
+        "txhash": txhash,
     }
     try:
         query = resources.insert().values(**final)
@@ -132,4 +135,4 @@ async def post_resource(
     if settings.USE_GRAPH_STORE:
         add_graph_to_store(iri, normalized, settings)
 
-    return {"iri": iri, "hash": base64_hash, "data": normalized}
+    return {"iri": iri, "hash": base64_hash, "data": normalized, "txhash": txhash}
