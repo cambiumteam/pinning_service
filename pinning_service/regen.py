@@ -49,7 +49,7 @@ def generate_anchor_tx(sender: Address, resolver_id: int, b64_hash: str) -> dict
     }
 
 
-def anchor(b64_hash: bytes) -> dict:
+def anchor(b64_hash: bytes) -> TxHash:
 
     # Build flags.
     chain_id = f"--chain-id {settings.REGEN_CHAIN_ID}"
@@ -66,17 +66,35 @@ def anchor(b64_hash: bytes) -> dict:
 
     # Broadcast transaction.
     # @TODO: make use of regen config passing REGEN_HOME
-    broadcast_command = f"echo '{json.dumps(signed_tx)}' | {settings.REGEN_CLI_COMMAND} regen tx broadcast /dev/stdin {chain_id} {node} {output}"
+    broadcast_command = f"echo '{json.dumps(signed_tx)}' | {settings.REGEN_CLI_COMMAND} regen tx broadcast /dev/stdin --broadcast-mode block {chain_id} {node} {output}"
     try:
-        result = json.loads(os.popen(broadcast_command).read())
+        tx_result = json.loads(os.popen(broadcast_command).read())
     except Exception:
         raise ValueError("Failed to broadcast transaction.")
 
-    return result
+    # Check the transaction result to ensure it was successful.
+    return get_successful_txhash(tx_result)
 
 
 def get_successful_txhash(tx_result: dict) -> TxHash:
+
+    # Check that a valid code was returned.
     if tx_result["code"] != 0:
-        raise ValueError('Invalid transactions result code')
-    
+        raise ValueError(tx_result["raw_log"])
+
+    # Check that the proper events happened.
+    log = next(log for log in tx_result["logs"] if log["msg_index"] == 0)
+
+    # Ensure data was anchored.
+    try:
+        next(event for event in log["events"] if event["type"] == "regen.data.v1.EventAnchor")
+    except StopIteration:
+        raise ValueError("No anchor event from transaction. The data may already be anchored.")
+
+    # Ensure data was registered with the resolver.
+    try:
+        next(event for event in log["events"] if event["type"] == "regen.data.v1.EventRegisterResolver")
+    except StopIteration:
+        raise ValueError("No register event from transaction.")
+
     return tx_result["txhash"]
