@@ -1,7 +1,7 @@
 import databases
 import sqlalchemy
 
-from config import get_settings
+from .config import get_settings
 
 # Settings dependency.
 settings = get_settings()
@@ -16,5 +16,6 @@ resources = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("iri", sqlalchemy.Text, primary_key=True),
     sqlalchemy.Column("hash", sqlalchemy.LargeBinary(length=32), primary_key=True),
-    sqlalchemy.Column("data", sqlalchemy.Text)
+    sqlalchemy.Column("data", sqlalchemy.Text),
+    sqlalchemy.Column("txhash", sqlalchemy.Text),
 )

@@ -2,9 +2,9 @@ from fastapi import FastAPI
 import sqlalchemy
 import uvicorn
 
-from config import get_settings
-from database import database, metadata
-from routing import router
+from .config import get_settings
+from .database import database, metadata
+from .routing import router
 
 # Settings dependency.
 settings = get_settings()
