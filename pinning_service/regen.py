@@ -50,15 +50,28 @@ def generate_anchor_tx(sender: Address, resolver_id: int, b64_hash: str) -> dict
 
 
 def anchor(b64_hash: bytes) -> dict:
+
+    # Build flags.
     chain_id = f"--chain-id {settings.REGEN_CHAIN_ID}"
     node = f"--node {settings.REGEN_NODE_TENDERMINT_RPC_URL}"
     output = "--output json"
     tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, settings.REGEN_RESOLVER_ID, b64_hash.decode('utf-8'))
     sign_command = f"echo '{json.dumps(tx)}' | {settings.REGEN_CLI_COMMAND} regen tx sign /dev/stdin --from {settings.REGEN_KEY_ADDRESS} {settings.REGEN_KEYRING_ARGS} {chain_id} {node} {output}"
-    signed_tx = os.popen(sign_command).read()
-    broadcast_command = f"echo '{signed_tx}' | {settings.REGEN_CLI_COMMAND} regen tx broadcast /dev/stdin {chain_id} {node} {output}"
+
+    # Sign the transaction.
+    try:
+        signed_tx = json.loads(os.popen(sign_command).read())
+    except Exception:
+        raise ValueError("Failed to sign transaction.")
+
+    # Broadcast transaction.
     # @TODO: make use of regen config passing REGEN_HOME
-    result = json.loads(os.popen(broadcast_command).read())
+    broadcast_command = f"echo '{json.dumps(signed_tx)}' | {settings.REGEN_CLI_COMMAND} regen tx broadcast /dev/stdin {chain_id} {node} {output}"
+    try:
+        result = json.loads(os.popen(broadcast_command).read())
+    except Exception:
+        raise ValueError("Failed to broadcast transaction.")
+
     return result
 
 

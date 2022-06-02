@@ -101,7 +101,7 @@ async def post_resource(
     try:
         tx = anchor(base64_hash)
     except Exception as e:
-        raise HTTPException(status_code=503, detail="Failed to anchor to chain.")
+        raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
         
     # Query regen node for the IRI.
     params = {
