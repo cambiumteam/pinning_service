@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     GRAPH_DB_BASE_URL: AnyHttpUrl
     GRAPH_DB_USERNAME: str
     GRAPH_DB_PASSWORD: str
-    USE_GRAPH_STORE: bool
 
 
 # Settings dependency.
