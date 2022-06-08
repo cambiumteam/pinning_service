@@ -14,7 +14,6 @@ from sqlalchemy import select
 
 from .config import get_settings, Settings
 from .database import database, resources
-from .graph import add_graph_to_store
 from .regen import anchor
 
 
@@ -131,8 +130,5 @@ async def post_resource(
     except Exception as e:
         # @TODO Improve handling of duplicate data.
         raise HTTPException(status_code=422, detail=e.args)
-
-    if settings.USE_GRAPH_STORE:
-        add_graph_to_store(iri, normalized, settings)
 
     return {"iri": iri, "hash": base64_hash, "data": normalized, "txhash": txhash}
