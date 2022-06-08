@@ -49,13 +49,13 @@ def generate_anchor_tx(sender: Address, resolver_id: int, b64_hash: str) -> dict
     }
 
 
-def anchor(b64_hash: bytes) -> TxHash:
+def anchor(b64_hash: str) -> TxHash:
 
     # Build flags.
     chain_id = f"--chain-id {settings.REGEN_CHAIN_ID}"
     node = f"--node {settings.REGEN_NODE_TENDERMINT_RPC_URL}"
     output = "--output json"
-    tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, settings.REGEN_RESOLVER_ID, b64_hash.decode('utf-8'))
+    tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, settings.REGEN_RESOLVER_ID, b64_hash)
     sign_command = f"echo '{json.dumps(tx)}' | {settings.REGEN_CLI_COMMAND} regen tx sign /dev/stdin --from {settings.REGEN_KEY_ADDRESS} {settings.REGEN_KEYRING_ARGS} {chain_id} {node} {output}"
 
     # Sign the transaction.

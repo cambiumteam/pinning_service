@@ -15,6 +15,8 @@ from sqlalchemy import select
 from .config import get_settings, Settings
 from .database import database, resources
 from .regen import anchor
+from .procrastinate import anchor_task, get_pc_app
+
 
 
 # JSONLD response class.
@@ -100,7 +102,9 @@ async def post_resource(
 
     # Anchor the data on-chain.
     try:
-        txhash = anchor(base64_hash)
+        # txhash = anchor(base64_hash.decode("utf-8"))
+        async with get_pc_app().open_async():
+            await anchor_task.defer_async(base64_hash=base64_hash.decode("utf-8"))
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
         
@@ -122,7 +126,6 @@ async def post_resource(
         "iri": iri,
         "hash": digest,
         "data": normalized,
-        "txhash": txhash,
     }
     try:
         query = resources.insert().values(**final)
@@ -131,4 +134,8 @@ async def post_resource(
         # @TODO Improve handling of duplicate data.
         raise HTTPException(status_code=422, detail=e.args)
 
-    return {"iri": iri, "hash": base64_hash, "data": normalized, "txhash": txhash}
+    return {
+        "iri": iri, 
+        "hash": base64_hash, 
+        "data": normalized, 
+    }
