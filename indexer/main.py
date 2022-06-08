@@ -47,13 +47,10 @@ async def listen(websocket):
 
         # Query to get each resolvers URL.
         for resolver_id in resolver_ids:
-            if resolver_id in resolver_urls:
+            if resolver_urls.get(resolver_id, None) is not None:
                 continue
             try:
-                api_url = urljoin(settings.REGEN_NODE_REST_URL, f"regen/data/v1/resolver/{resolver_id}")
-                response = requests.get(api_url)
-                resolver_url = response.json().get("resolver", {}).get("url")
-                resolver_urls[resolver_id] = resolver_url
+                resolver_urls[resolver_id] = get_resolver_url(resolver_id)
             except Exception as e:
                 print(e)
                 continue
@@ -63,18 +60,30 @@ async def listen(websocket):
         resolver_url = resolver_urls.get(resolver_id)
 
         # Index each IRI that was anchored.
-        format = "application/ld+json"
         event_name = "regen.data.v1.EventRegisterResolver.iri"
         for iri in result.get("events", {}).get(event_name, []):
             iri = iri.replace("\"", '')
             try:
-                resource_url = f"{resolver_url.rstrip('/')}/{iri}"
-                response = requests.get(resource_url, headers={"Accept": format})
-                add_graph_to_store(iri, response.content, settings, format=format)
+                index_iri(resolver_url, iri)
                 print(f"Indexed {iri}")
             except Exception as e:
                 print(e)
                 continue
+
+
+# Request graph data from the resolver and add to graph store.
+def index_iri(resolver_url: str, iri: str):
+    format = "application/ld+json"
+    resource_url = f"{resolver_url.rstrip('/')}/{iri}"
+    response = requests.get(resource_url, headers={"Accept": format})
+    add_graph_to_store(iri, response.content, settings, format=format)
+
+
+# Helper function to get resolver URLs.
+def get_resolver_url(resolver_id: int) -> str:
+    api_url = urljoin(settings.REGEN_NODE_REST_URL, f"regen/data/v1/resolver/{resolver_id}")
+    response = requests.get(api_url)
+    return response.json().get("resolver", {}).get("url")
 
 
 if __name__ == "__main__":
