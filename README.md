@@ -6,13 +6,13 @@ A combination pinning service, resolver and indexer for the [data module](https:
 
 ## Features
 
-This application provides services to support use-cases that need to provide verifiable supporting data for credit classes, projects, and credit batches that are created and managed using the ecocredit module on Regen Ledger.
+This application provides services to add supporting data for credit classes, projects, and credit batches that are created and managed using the ecocredit module on Regen Ledger.
 
 For more information see the [Data module](https://docs.regen.network/modules/data/) and [Concepts](https://docs.regen.network/modules/data/01_concepts.html) documentation.
 
 ### Pinning service
 
-The pinning service faciliates the processing and anchoring RDF graph data on-chain:
+The pinning service facilitates the processing and anchoring RDF graph data on-chain:
 
 - A JSON-LD document is sent to the pinning service where it is canonicalized and procssed into a [Content Hash](https://docs.regen.network/modules/data/01_concepts.html#content-hash).
 - The content hash is [anchored](https://docs.regen.network/modules/data/01_concepts.html#anchor) on-chain to provide "secure timestamping".
@@ -21,7 +21,7 @@ The pinning service faciliates the processing and anchoring RDF graph data on-ch
 
 ### Resolver
 
-A [resolver](https://docs.regen.network/modules/data/01_concepts.html#resolver) is used to retrieve data that has been stored off chain and anchored on chain. The pinning service can be used to retrieve the data it has anchored on-chain. Graph data that is provided by the resolver can be requested in different serialization formats.
+A [resolver](https://docs.regen.network/modules/data/01_concepts.html#resolver) is used to retrieve data that has been stored off chain and anchored on chain. The pinning service can be used to retrieve the data it has anchored on-chain. Graph data that is provided by the resolver can be requested in multiple serialization formats.
 
 ### Indexer
 
