@@ -15,7 +15,7 @@ from sqlalchemy import select
 from .config import get_settings, Settings
 from .database import database, resources
 from .regen import anchor
-from .procrastinate import anchor_task, get_pc_app
+from .procrastinate import get_pc_app, anchor_task#, anchor_deferred
 
 
 
@@ -103,8 +103,10 @@ async def post_resource(
     # Anchor the data on-chain.
     try:
         # txhash = anchor(base64_hash.decode("utf-8"))
+        # await anchor_deferred(base64_hash.decode("utf-8"))
         async with get_pc_app().open_async():
             await anchor_task.defer_async(base64_hash=base64_hash.decode("utf-8"))
+
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
         
@@ -126,6 +128,7 @@ async def post_resource(
         "iri": iri,
         "hash": digest,
         "data": normalized,
+        "anchor_attempts": int(0),
     }
     try:
         query = resources.insert().values(**final)
@@ -138,4 +141,5 @@ async def post_resource(
         "iri": iri, 
         "hash": base64_hash, 
         "data": normalized, 
+        "anchor_attempts": int(0),
     }

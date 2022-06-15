@@ -15,8 +15,9 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=app
       # - POSTGRES_DB=default_database
     ports:
       - "5432:5432"
     # volumes: 
-    #   - ./db:/var/lib/postgresql/data
+    #   - ./db:/var/lib/postgresql/dataP

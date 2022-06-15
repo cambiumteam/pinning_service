@@ -1,5 +1,6 @@
 docker/.testnets
 docker2/.testnets
+localnet/.testnets
 test.db
 # Byte-compiled / optimized / DLL files
 __pycache__/
