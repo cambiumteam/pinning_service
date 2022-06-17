@@ -15,7 +15,7 @@ from sqlalchemy import select
 from .config import get_settings, Settings
 from .database import database, resources
 from .regen import anchor
-from .procrastinate import get_pc_app, anchor_task#, anchor_deferred
+from .task_queue import anchor_deferred
 
 
 
@@ -78,6 +78,26 @@ async def get_resource(iri: str, request: Request):
     return Response(serialized, media_type=accept)
 
 
+@router.get("/resource/{iri}/status", response_class=JSONResponse)
+async def get_resource_status(iri: str, request: Request):
+    query = select(resources.c.anchor_attempts, resources.c.txhash).where(
+        resources.c.iri == iri
+    )
+    data = await database.fetch_one(query)
+    if data is None:
+        raise HTTPException(status_code=404)
+
+    status = "pending"
+
+    if data.anchor_attempts > 4 and data.txhash is None:
+        status = "failure"
+    elif data.txhash is not None:
+        status = "success"
+
+        
+
+    return JSONResponse(jsonable_encoder({ "status": status,  }))
+
 # Create new resource.
 @router.post("/resource")
 async def post_resource(
@@ -102,10 +122,7 @@ async def post_resource(
 
     # Anchor the data on-chain.
     try:
-        # txhash = anchor(base64_hash.decode("utf-8"))
-        # await anchor_deferred(base64_hash.decode("utf-8"))
-        async with get_pc_app().open_async():
-            await anchor_task.defer_async(base64_hash=base64_hash.decode("utf-8"))
+        await anchor_deferred(base64_hash.decode("utf-8"))
 
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
@@ -128,7 +145,8 @@ async def post_resource(
         "iri": iri,
         "hash": digest,
         "data": normalized,
-        "anchor_attempts": int(0),
+        "txhash": None,
+        "anchor_attempts": 0,
     }
     try:
         query = resources.insert().values(**final)
@@ -141,5 +159,7 @@ async def post_resource(
         "iri": iri, 
         "hash": base64_hash, 
         "data": normalized, 
-        "anchor_attempts": int(0),
+        "txhash": None,
+        "anchor_attempts": 0,
     }
+

@@ -19,21 +19,24 @@ engine = sqlalchemy.create_engine(
 
 
 @lru_cache()
-def get_pc_app():
+def get_task_queue():
     return procrastinate.App(
         connector=procrastinate.AiopgConnector(
-            host="localhost", user="postgres", password="postgres"
+            host=settings.POSTGRES_SERVER, 
+            user=settings.POSTGRES_USER, 
+            password=settings.POSTGRES_PASSWORD, 
+            database=settings.POSTGRES_DB,
         ),
     )
 
 
-pc_app = get_pc_app()
+task_queue = get_task_queue()
 
 
-@pc_app.task(queue="tasks")
+@task_queue.task(queue="tasks")
 async def anchor_task(base64_hash: str):
     await database.connect()
-
+    
     try:
         txhash = anchor(base64_hash)
     except Exception:
@@ -52,12 +55,11 @@ async def anchor_task(base64_hash: str):
 
 
 # export PYTHONPATH=.
-# procrastinate --app=pinning_service.procrastinate.pc_app schema --apply
-# procrastinate --app=pinning_service.procrastinate.pc_app healthchecks
-# procrastinate --app=pinning_service.procrastinate.pc_app worker
+# procrastinate --app=pinning_service.procrastinate.task_queue schema --apply
+# procrastinate --app=pinning_service.procrastinate.task_queue healthchecks
+# procrastinate --app=pinning_service.procrastinate.task_queue worker
 
 
-# async def anchor_deferred(b64_hash: str):
-#     print('hello')
-#     async with get_pc_app().open_async():
-#             await anchor_task.defer_async(base64_hash=base64_hash.decode("utf-8"))
+async def anchor_deferred(base64_hash: str):
+    async with get_task_queue().open_async():
+            await anchor_task.defer_async(base64_hash=base64_hash)
