@@ -2,23 +2,20 @@ import base64
 from datetime import datetime
 from typing import Any
 import hashlib
-from urllib.parse import urljoin
+import traceback
 
 from fastapi import APIRouter, Body, HTTPException, Request, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from pyld import jsonld
-import requests
 from rdflib import ConjunctiveGraph
 from rdflib.plugin import PluginException
 from sqlalchemy import select
 
-from .config import get_settings, Settings
+from .content_hash import ContentHash, ContentHashGraph, DigestAlgorithm, GraphCanonicalizationAlgorithm, GraphMerkleTree
 from .database import database, resources
 from .task_queue import anchor_batch_deferred
-
-import traceback
-
+from .iri import to_iri
 
 
 # JSONLD response class.
@@ -107,24 +104,12 @@ async def resource_exists(digest: bytes) -> bool:
     query = select(resources.c.iri).where(resources.c.hash == digest)
     iri = await database.fetch_val(query)
     return bool(iri)
-        
 
-def query_iri(base64_hash: bytes, settings) -> str:
-    params = {
-        "hash": base64_hash,
-        "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
-        "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
-        "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED",
-    }
-    api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
-    res = requests.get(api_url, params)
-    return res.json()["iri"]
 
 # Create new resource.
 @router.post("/resource")
 async def post_resource(
         data: Any = Body(..., media_type='application/ld+json'),
-        settings: Settings = Depends(get_settings),
 ):
 
     # Canonicalization.
@@ -142,13 +127,19 @@ async def post_resource(
     digest = hashlib.blake2b(binary, digest_size=32).digest()
     base64_hash = base64.b64encode(digest)
 
-    # Query regen node for the IRI.
+    # Build content hash and generate IRI.
     try:
-        iri = query_iri(base64_hash, settings)
+        content_hash_graph = ContentHashGraph(
+            hash=digest,
+            digest_algorithm=DigestAlgorithm.BLAKE2B_256,
+            canonicalization_algorithm=GraphCanonicalizationAlgorithm.URDNA2015,
+            merkle_tree=GraphMerkleTree.NONE_UNSPECIFIED,
+        )
+        content_hash = ContentHash(graph=content_hash_graph)
+        iri = to_iri(content_hash)
     except Exception as e:
-        raise HTTPException(status_code=503, detail="Failed to query regen node.")
+        raise HTTPException(status_code=422, detail=f"Invalid content hash: {e}")
 
-    
     # Check if resource is already pinned
     try:
         exists = await resource_exists(digest)
