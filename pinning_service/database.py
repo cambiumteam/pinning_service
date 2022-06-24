@@ -21,4 +21,6 @@ resources = sqlalchemy.Table(
     sqlalchemy.Column("data", sqlalchemy.Text),
     sqlalchemy.Column("txhash", sqlalchemy.Text),
     sqlalchemy.Column("anchor_attempts", sqlalchemy.Integer),
+    sqlalchemy.Column("pinned_at", sqlalchemy.DateTime),
+    sqlalchemy.Column("anchored_at", sqlalchemy.DateTime),
 )

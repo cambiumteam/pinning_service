@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 from typing import Any
 import hashlib
 from urllib.parse import urljoin
@@ -16,6 +17,8 @@ from .config import get_settings, Settings
 from .database import database, resources
 from .regen import anchor
 from .task_queue import anchor_deferred
+
+import traceback
 
 
 
@@ -94,9 +97,19 @@ async def get_resource_status(iri: str, request: Request):
     elif data.txhash is not None:
         status = "success"
 
-        
+    # @TODO: add pinned_at, anchored_at ?  
+    response = jsonable_encoder({ 
+        "status": status,  
+    })
+    return JSONResponse(response)
 
-    return JSONResponse(jsonable_encoder({ "status": status,  }))
+async def resource_exists(digest: bytes) -> str:
+    query = select(resources.c.iri).where(resources.c.hash == digest)
+    iri = await database.fetch_val(query)
+    print('inside resource exists')
+    print(iri)
+    return iri
+        
 
 # Create new resource.
 @router.post("/resource")
@@ -119,6 +132,19 @@ async def post_resource(
     binary = normalized.encode('utf-8')
     digest = hashlib.blake2b(binary, digest_size=32).digest()
     base64_hash = base64.b64encode(digest)
+
+    
+    try:
+        existing_iri = await resource_exists(digest)
+    except Exception:
+        # @TODO: should this just return a 302 and return the resource that was already pinned?
+        # @TODO: what if the resource already exists, but has failed? seems like we should provide a try again
+        traceback.print_exc()
+        # Database error
+        raise HTTPException(status_code=503, detail=f"Failed to pin resource")
+    
+    if existing_iri is not None:
+            raise HTTPException(status_code=409, detail=f"Resource {existing_iri} already exists")
 
     # Anchor the data on-chain.
     try:
@@ -147,6 +173,7 @@ async def post_resource(
         "data": normalized,
         "txhash": None,
         "anchor_attempts": 0,
+        "pinned_at": datetime.now(),
     }
     try:
         query = resources.insert().values(**final)

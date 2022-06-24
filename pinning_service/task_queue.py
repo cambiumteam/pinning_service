@@ -8,6 +8,8 @@ import sqlalchemy
 from .database import database, resources
 import asyncio
 import base64
+from datetime import datetime, timezone
+import traceback
 
 
 settings = get_settings()
@@ -34,7 +36,7 @@ task_queue = get_task_queue()
 
 
 @task_queue.task(queue="tasks")
-async def anchor_task(base64_hash: str):
+async def anchor_task(base64_hash: str) -> None:
     await database.connect()
     
     try:
@@ -42,6 +44,7 @@ async def anchor_task(base64_hash: str):
     except Exception:
         # @TODO: log issue
         print(Exception)
+        traceback.print_exc()
         txhash = None
 
     query = resources.update(
@@ -49,15 +52,22 @@ async def anchor_task(base64_hash: str):
         {
             "txhash": txhash,
             "anchor_attempts": resources.c.anchor_attempts + 1,
+            # @TODO: add UTC timezone
+            "anchored_at": datetime.now(),
         },
     )
     await database.execute(query)
 
 
-# export PYTHONPATH=.
-# procrastinate --app=pinning_service.procrastinate.task_queue schema --apply
-# procrastinate --app=pinning_service.procrastinate.task_queue healthchecks
-# procrastinate --app=pinning_service.procrastinate.task_queue worker
+# @task_queue.task(queue="tasks")
+# async def anchor_batch_task(base_64_hash: str) -> None:
+#     await database.connect()
+
+#     query = select(resources.c.hash).where(resources.c.anchor_attempts == 0)
+#     database.fetch_all(query)
+
+
+#     # update_query = resources.update()
 
 
 async def anchor_deferred(base64_hash: str):
