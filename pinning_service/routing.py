@@ -103,13 +103,23 @@ async def get_resource_status(iri: str, request: Request):
     })
     return JSONResponse(response)
 
-async def resource_exists(digest: bytes) -> str:
+
+async def resource_exists(digest: bytes) -> bool:
     query = select(resources.c.iri).where(resources.c.hash == digest)
     iri = await database.fetch_val(query)
-    print('inside resource exists')
-    print(iri)
-    return iri
+    return bool(iri)
         
+
+def query_iri(base64_hash: bytes, settings) -> str:
+    params = {
+        "hash": base64_hash,
+        "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
+        "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
+        "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED",
+    }
+    api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
+    res = requests.get(api_url, params)
+    return res.json()["iri"]
 
 # Create new resource.
 @router.post("/resource")
@@ -133,9 +143,16 @@ async def post_resource(
     digest = hashlib.blake2b(binary, digest_size=32).digest()
     base64_hash = base64.b64encode(digest)
 
-    
+    # Query regen node for the IRI.
     try:
-        existing_iri = await resource_exists(digest)
+        iri = query_iri(base64_hash, settings)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail="Failed to query regen node.")
+
+    
+    # Check if resource is already pinned
+    try:
+        exists = await resource_exists(digest)
     except Exception:
         # @TODO: should this just return a 302 and return the resource that was already pinned?
         # @TODO: what if the resource already exists, but has failed? seems like we should provide a try again
@@ -143,36 +160,17 @@ async def post_resource(
         # Database error
         raise HTTPException(status_code=503, detail=f"Failed to pin resource")
     
-    if existing_iri is not None:
-            raise HTTPException(status_code=409, detail=f"Resource {existing_iri} already exists")
-
-    # Anchor the data on-chain.
-    try:
-        await anchor_deferred(base64_hash.decode("utf-8"))
-
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
+    if exists:
+            raise HTTPException(status_code=409, detail=f"Resource {iri} already exists")
         
-    # Query regen node for the IRI.
-    params = {
-        "hash": base64_hash,
-        "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
-        "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
-        "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED",
-    }
-    try:
-        api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
-        res = requests.get(api_url, params)
-        iri = res.json()["iri"]
-    except Exception as e:
-        raise HTTPException(status_code=503, detail="Failed to query regen node.")
-
+    # Pin resource to database    
     final = {
         "iri": iri,
         "hash": digest,
         "data": normalized,
         "txhash": None,
         "anchor_attempts": 0,
+        # @TODO: store UTC timezone info
         "pinned_at": datetime.now(),
     }
     try:
@@ -182,11 +180,26 @@ async def post_resource(
         # @TODO Improve handling of duplicate data.
         raise HTTPException(status_code=422, detail=e.args)
 
+    # Anchor the data on-chain.
+    try:
+        await anchor_deferred(base64_hash.decode("utf-8"))
+
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
+
+
+    # Store in graph database
+    if settings.USE_GRAPH_STORE:
+        add_graph_to_store(iri, normalized, settings)
+
+
+    # Return response
     return {
         "iri": iri, 
         "hash": base64_hash, 
         "data": normalized, 
         "txhash": None,
         "anchor_attempts": 0,
+        "pinned_at": final["pinned_at"]
     }
 
