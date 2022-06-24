@@ -16,7 +16,7 @@ from sqlalchemy import select
 from .config import get_settings, Settings
 from .database import database, resources
 from .regen import anchor
-from .task_queue import anchor_deferred
+from .task_queue import anchor_deferred, anchor_batch_deferred
 
 import traceback
 
@@ -182,15 +182,16 @@ async def post_resource(
 
     # Anchor the data on-chain.
     try:
-        await anchor_deferred(base64_hash.decode("utf-8"))
+        # await anchor_deferred(base64_hash.decode("utf-8"))
+        await anchor_batch_deferred()
 
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
 
 
     # Store in graph database
-    if settings.USE_GRAPH_STORE:
-        add_graph_to_store(iri, normalized, settings)
+    # if settings.USE_GRAPH_STORE:
+        # add_graph_to_store(iri, normalized, settings)
 
 
     # Return response
