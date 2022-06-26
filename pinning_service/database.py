@@ -1,4 +1,3 @@
-from re import A
 import databases
 import sqlalchemy
 
@@ -8,7 +7,6 @@ from .config import get_settings
 settings = get_settings()
 
 # SQLite database.
-# database = databases.Database(settings.DATABASE_URL)
 database = databases.Database(settings.SQLALCHEMY_DATABASE_URI)
 
 # Resource table.

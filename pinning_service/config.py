@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = '.env'
 
-    # DATABASE_URL: str
     POSTGRES_SERVER: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str

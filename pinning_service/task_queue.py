@@ -1,21 +1,19 @@
 import procrastinate
 from functools import lru_cache
 from .regen import anchor
-from .config import Settings, get_settings
+from .config import get_settings
 
 from sqlalchemy import select
 import sqlalchemy
 from .database import database, resources
-import asyncio
 from base64 import b64decode, b64encode
-from datetime import datetime, timezone
+from datetime import datetime
 import traceback
 
 
 settings = get_settings()
 
 engine = sqlalchemy.create_engine(
-    # settings.DATABASE_URL#, connect_args={"check_same_thread": False}
     settings.SQLALCHEMY_DATABASE_URI,
 )
 

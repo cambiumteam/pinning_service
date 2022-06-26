@@ -11,13 +11,13 @@ settings = get_settings()
 
 # Create tables.
 engine = sqlalchemy.create_engine(
-    # settings.DATABASE_URL#, connect_args={"check_same_thread": False}
     settings.SQLALCHEMY_DATABASE_URI#, connect_args={"check_same_thread": False}
 )
 metadata.create_all(engine)
 
 # Create FastAPI app.
 app = FastAPI()
+
 
 @app.on_event("startup")
 async def startup():
