@@ -2,6 +2,8 @@ import os
 import json
 from typing import NewType
 from .config import get_settings
+from collections.abc import Iterable
+
 
 settings = get_settings()
 
@@ -10,24 +12,27 @@ IRI = NewType('IRI', str)
 Address = NewType('Address', str)
 
 
-def generate_anchor_tx(sender: Address, resolver_id: int, b64_hash: str) -> dict:
+def generate_content_hash(b64_hash: str) -> dict:
+    return {
+        "raw": None,
+        "graph": {
+            "hash": b64_hash,
+            "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
+            "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
+            "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED"
+        }
+    }
+
+def generate_anchor_tx(sender: Address, resolver_id: int, b64_hashes: Iterable[str]) -> dict:
+    content_hashes = [generate_content_hash(b64_hash) for b64_hash in b64_hashes]
+    print(b64_hashes)
     return {
         "body": {
             "messages": [{
                 "@type": "/regen.data.v1.MsgRegisterResolver",
                 "manager": sender,
                 "resolver_id": resolver_id,
-                "content_hashes": [
-                  {
-                    "raw": None,
-                    "graph": {
-                      "hash": b64_hash,
-                      "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
-                      "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
-                      "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED"
-                    }
-                  }
-                ]
+                "content_hashes": content_hashes,
             }],
             "memo": "",
             "timeout_height": "0",
@@ -49,13 +54,13 @@ def generate_anchor_tx(sender: Address, resolver_id: int, b64_hash: str) -> dict
     }
 
 
-def anchor(b64_hash: bytes) -> TxHash:
+def anchor(b64_hashes: Iterable[str]) -> TxHash:
 
     # Build flags.
     chain_id = f"--chain-id {settings.REGEN_CHAIN_ID}"
     node = f"--node {settings.REGEN_NODE_TENDERMINT_RPC_URL}"
     output = "--output json"
-    tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, settings.REGEN_RESOLVER_ID, b64_hash.decode('utf-8'))
+    tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, settings.REGEN_RESOLVER_ID, b64_hashes)
     sign_command = f"echo '{json.dumps(tx)}' | {settings.REGEN_CLI_COMMAND} regen tx sign /dev/stdin --from {settings.REGEN_KEY_ADDRESS} {settings.REGEN_KEYRING_ARGS} {chain_id} {node} {output}"
 
     # Sign the transaction.

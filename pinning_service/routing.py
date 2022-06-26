@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 from typing import Any
 import hashlib
 from urllib.parse import urljoin
@@ -14,7 +15,10 @@ from sqlalchemy import select
 
 from .config import get_settings, Settings
 from .database import database, resources
-from .regen import anchor
+from .task_queue import anchor_batch_deferred
+
+import traceback
+
 
 
 # JSONLD response class.
@@ -76,6 +80,46 @@ async def get_resource(iri: str, request: Request):
     return Response(serialized, media_type=accept)
 
 
+@router.get("/resource/{iri}/status", response_class=JSONResponse)
+async def get_resource_status(iri: str, request: Request):
+    query = select(resources.c.anchor_attempts, resources.c.txhash).where(
+        resources.c.iri == iri
+    )
+    data = await database.fetch_one(query)
+    if data is None:
+        raise HTTPException(status_code=404)
+
+    status = "pending"
+
+    if data.anchor_attempts > 4 and data.txhash is None:
+        status = "failure"
+    elif data.txhash is not None:
+        status = "success"
+
+    # @TODO: add pinned_at, anchored_at ?  
+    response = jsonable_encoder({ 
+        "status": status,  
+    })
+    return JSONResponse(response)
+
+
+async def resource_exists(digest: bytes) -> bool:
+    query = select(resources.c.iri).where(resources.c.hash == digest)
+    iri = await database.fetch_val(query)
+    return bool(iri)
+        
+
+def query_iri(base64_hash: bytes, settings) -> str:
+    params = {
+        "hash": base64_hash,
+        "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
+        "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
+        "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED",
+    }
+    api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
+    res = requests.get(api_url, params)
+    return res.json()["iri"]
+
 # Create new resource.
 @router.post("/resource")
 async def post_resource(
@@ -98,31 +142,35 @@ async def post_resource(
     digest = hashlib.blake2b(binary, digest_size=32).digest()
     base64_hash = base64.b64encode(digest)
 
-    # Anchor the data on-chain.
-    try:
-        txhash = anchor(base64_hash)
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
-        
     # Query regen node for the IRI.
-    params = {
-        "hash": base64_hash,
-        "digest_algorithm": "DIGEST_ALGORITHM_BLAKE2B_256",
-        "canonicalization_algorithm": "GRAPH_CANONICALIZATION_ALGORITHM_URDNA2015",
-        "merkle_tree": "GRAPH_MERKLE_TREE_NONE_UNSPECIFIED",
-    }
     try:
-        api_url = urljoin(settings.REGEN_NODE_REST_URL, "regen/data/v1/iri-by-graph")
-        res = requests.get(api_url, params)
-        iri = res.json()["iri"]
+        iri = query_iri(base64_hash, settings)
     except Exception as e:
         raise HTTPException(status_code=503, detail="Failed to query regen node.")
 
+    
+    # Check if resource is already pinned
+    try:
+        exists = await resource_exists(digest)
+    except Exception:
+        # @TODO: should this just return a 302 and return the resource that was already pinned?
+        # @TODO: what if the resource already exists, but has failed? seems like we should provide a try again
+        traceback.print_exc()
+        # Database error
+        raise HTTPException(status_code=503, detail=f"Failed to pin resource")
+    
+    if exists:
+            raise HTTPException(status_code=409, detail=f"Resource {iri} already exists")
+        
+    # Pin resource to database    
     final = {
         "iri": iri,
         "hash": digest,
         "data": normalized,
-        "txhash": txhash,
+        "txhash": None,
+        "anchor_attempts": 0,
+        # @TODO: store UTC timezone info
+        "pinned_at": datetime.now(),
     }
     try:
         query = resources.insert().values(**final)
@@ -131,4 +179,20 @@ async def post_resource(
         # @TODO Improve handling of duplicate data.
         raise HTTPException(status_code=422, detail=e.args)
 
-    return {"iri": iri, "hash": base64_hash, "data": normalized, "txhash": txhash}
+    # Anchor the data on-chain.
+    try:
+        await anchor_batch_deferred()
+
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Failed to anchor data on-chain: {e}")
+
+    # Return response
+    return {
+        "iri": iri, 
+        "hash": base64_hash, 
+        "data": normalized, 
+        "txhash": None,
+        "anchor_attempts": 0,
+        "pinned_at": final["pinned_at"]
+    }
+
