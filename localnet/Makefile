@@ -94,7 +94,11 @@ keys-clean:
 keys-manager-address:
 		@echo $(call get_key_address, $(MANAGER_KEY_NAME))
 
-.PHONY: keys-init keys-clean keys-manager-address
+keys-service-address:
+		@echo $(call get_key_address, $(SERVICE_KEY_NAME))
+
+
+.PHONY: keys-init keys-clean keys-manager-address keys-service-address
 
 #####################
 ### Account setup ###
