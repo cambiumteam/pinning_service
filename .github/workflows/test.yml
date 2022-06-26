@@ -1,0 +1,26 @@
+name: Run tests
+on:
+  schedule:
+    - cron: '0 8 * * *' # Run at 8AM UTC.
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '^1.18'
+      - name: Start localnet
+        run: |
+          make localnet-configure
