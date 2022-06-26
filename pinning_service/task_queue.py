@@ -62,8 +62,8 @@ async def anchor_batch_task() -> None:
 
     query = select([resources.c.hash]).where(resources.c.anchor_attempts == 0).limit(10)
     records = await database.fetch_all(query)
-    
-    if len(records == 0):
+
+    if len(records) == 0:
         print("All resources have been processed")
         return
 
