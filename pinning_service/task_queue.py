@@ -1,6 +1,5 @@
 import procrastinate
 from functools import lru_cache
-from base64 import b64decode, b64encode
 from datetime import datetime
 import traceback
 
@@ -31,29 +30,6 @@ def get_task_queue():
 
 
 task_queue = get_task_queue()
-
-
-@task_queue.task(queue="tasks")
-async def anchor_task(base64_hash: str) -> None:
-    await database.connect()
-
-    try:
-        txhash = anchor([base64_hash])
-    except Exception:
-        # @TODO: log issue
-        traceback.print_exc()
-        txhash = None
-
-    query = resources.update(
-        resources.c.hash == b64decode(base64_hash),
-        {
-            "txhash": txhash,
-            "anchor_attempts": resources.c.anchor_attempts + 1,
-            # @TODO: add UTC timezone
-            "anchored_at": datetime.now(),
-        },
-    )
-    await database.execute(query)
 
 
 @task_queue.task(queue="tasks")
@@ -88,11 +64,6 @@ async def anchor_batch_task() -> None:
         },
     )
     await database.execute(update_query)
-
-
-async def anchor_deferred(base64_hash: str):
-    async with get_task_queue().open_async():
-        await anchor_task.defer_async(base64_hash=base64_hash)
 
 
 async def anchor_batch_deferred():
