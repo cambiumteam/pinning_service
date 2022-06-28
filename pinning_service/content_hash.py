@@ -1,4 +1,5 @@
 import base64
+import binascii
 from enum import IntEnum
 
 from pydantic import BaseModel, root_validator, validator
@@ -39,6 +40,16 @@ class RawMediaType(IntEnum):
     OGG = 35
 
 
+# Helper function to check if a string is base64.
+# This isn't perfect but will catch invalid characters and string lengths.
+def is_base64(hash: str) -> bool:
+    try:
+        base64.b64decode(hash)
+        return True
+    except binascii.Error:
+        return False
+
+
 # Pydantic validator function for content hash classes.
 # The hash in content hash objects should be the base64 encoded string of
 # data. This makes it easier to dump the content hash objects to json. If
@@ -47,6 +58,8 @@ class RawMediaType(IntEnum):
 def hash_bytes_validator(hash) -> str:
     if type(hash) == bytes:
         return base64.b64encode(hash).decode()
+    if not is_base64(hash):
+        raise ValueError("Hash must be the base64 encoded string.")
     return hash
 
 
