@@ -1,6 +1,7 @@
+import base64
 from enum import IntEnum
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, root_validator, validator
 
 
 class DigestAlgorithm(IntEnum):
@@ -38,15 +39,28 @@ class RawMediaType(IntEnum):
     OGG = 35
 
 
+# Pydantic validator function for content hash classes.
+# The hash in content hash objects should be the base64 encoded string of
+# data. This makes it easier to dump the content hash objects to json. If
+# a content hash object is instantiated with bytes the base64 encoded
+# string of the bytes will be stored instead.
+def hash_bytes_validator(hash) -> str:
+    if type(hash) == bytes:
+        return base64.b64encode(hash).decode()
+    return hash
+
+
 class ContentHashGraph(BaseModel):
-    hash: bytes
+    hash: str
+    _validate_bytes = validator('hash', allow_reuse=True, pre=True)(hash_bytes_validator)
     digest_algorithm: DigestAlgorithm
     canonicalization_algorithm: GraphCanonicalizationAlgorithm
     merkle_tree: GraphMerkleTree
 
 
 class ContentHashRaw(BaseModel):
-    hash: bytes
+    hash: str
+    _validate_bytes = validator('hash', allow_reuse=True, pre=True)(hash_bytes_validator)
     digest_algorithm: DigestAlgorithm
     media_type: RawMediaType
 
@@ -60,4 +74,3 @@ class ContentHash(BaseModel):
         if (values.get('raw') is None) and (values.get("graph") is None):
             raise ValueError('Raw or graph content hash is required.')
         return values
-

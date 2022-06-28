@@ -1,3 +1,4 @@
+import base64
 from enum import IntEnum
 
 import base58
@@ -28,8 +29,10 @@ def to_iri(content_hash: ContentHash):
     bytes_array[3] = content_hash_graph.merkle_tree
     bytes_array[4] = content_hash_graph.digest_algorithm
 
+    # Decode the base64 encoded string from the content hash.
+    hash_bytes = base64.b64decode(content_hash_graph.hash.encode())
+
     # Append hash bytes to bytes array.
-    hash_bytes = content_hash_graph.hash
     hash_string = base58.b58encode_check(bytes_array + hash_bytes)
 
     # Return decoded string.
