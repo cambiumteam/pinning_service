@@ -3,7 +3,7 @@ DOCKER := $(shell which docker)
 
 # Regen configuration.
 REGEN := regen-ledger/build/regen
-REGEN_VERSION ?= 18e247166d506d6c9b9c444b0b197ae5e3f80efa
+REGEN_VERSION ?= master
 
 # Key configuration.
 LOCALNET_KEYRING_DIR ?= $(shell pwd)/keys
