@@ -1,6 +1,5 @@
 import procrastinate
 from functools import lru_cache
-from base64 import b64decode, b64encode
 from datetime import datetime
 import traceback
 
@@ -9,6 +8,7 @@ from sqlalchemy import select
 
 from .config import get_settings
 from .database import database, resources
+from .iri import parse_iri
 from .regen import anchor
 
 settings = get_settings()
@@ -34,52 +34,31 @@ task_queue = get_task_queue()
 
 
 @task_queue.task(queue="tasks")
-async def anchor_task(base64_hash: str) -> None:
-    await database.connect()
-
-    try:
-        txhash = anchor([base64_hash])
-    except Exception:
-        # @TODO: log issue
-        traceback.print_exc()
-        txhash = None
-
-    query = resources.update(
-        resources.c.hash == b64decode(base64_hash),
-        {
-            "txhash": txhash,
-            "anchor_attempts": resources.c.anchor_attempts + 1,
-            # @TODO: add UTC timezone
-            "anchored_at": datetime.now(),
-        },
-    )
-    await database.execute(query)
-
-
-@task_queue.task(queue="tasks")
 async def anchor_batch_task() -> None:
     await database.connect()
 
-    query = select([resources.c.hash]).where(resources.c.anchor_attempts == 0).limit(10)
+    # Fetch resources that have no anchor attempts.
+    query = select([resources.c.iri]).where(resources.c.anchor_attempts == 0).limit(10)
     records = await database.fetch_all(query)
 
     if len(records) == 0:
         print("All resources have been processed")
         return
 
-    hashes = [record.hash for record in records]
-    b64_hashes = [b64encode(h).decode("utf-8") for h in hashes]
-    print(f"Batch anchoring {b64_hashes}")
+    # Parse each resource's IRI into a content hash object.
+    iris = [record.iri for record in records]
+    content_hashes = [parse_iri(iri) for iri in iris]
 
     try:
-        txhash = anchor(b64_hashes)
+        txhash = anchor(content_hashes)
     except Exception:
         # @TODO: log issue
         traceback.print_exc()
         txhash = None
 
+    # Update the resources that were anchored.
     update_query = resources.update(
-        resources.c.hash.in_(hashes),
+        resources.c.iri.in_(iris),
         {
             "txhash": txhash,
             "anchor_attempts": resources.c.anchor_attempts + 1,
@@ -88,11 +67,6 @@ async def anchor_batch_task() -> None:
         },
     )
     await database.execute(update_query)
-
-
-async def anchor_deferred(base64_hash: str):
-    async with get_task_queue().open_async():
-        await anchor_task.defer_async(base64_hash=base64_hash)
 
 
 async def anchor_batch_deferred():
