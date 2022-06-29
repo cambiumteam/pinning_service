@@ -126,5 +126,6 @@ register-resolver:
 		$(REGEN) tx data register-resolver 1 content.json --from $(call get_key_address, $(MANAGER_KEY_NAME)) --chain-id $(call localnet_chain_id) --fees 2stake --generate-only $(KEYRING_ARGS) > tx.json
 		@echo "Execute register-resolver tx.json"
 		$(REGEN) tx authz exec tx.json --from $(call get_key_address, $(SERVICE_KEY_NAME)) --chain-id $(call localnet_chain_id) --fee-account $(call get_key_address, $(MANAGER_KEY_NAME))  --fees 2stake -y -b block $(KEYRING_ARGS)
+		rm tx.json
 
 .PHONY: fund-manager define-resolver grant-service-account register-resolver
