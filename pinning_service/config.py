@@ -33,7 +33,6 @@ class Settings(BaseSettings):
     REGEN_NODE_TENDERMINT_RPC_URL: AnyHttpUrl
     REGEN_KEYRING_ARGS: str = None
     REGEN_CHAIN_ID: str = None
-    REGEN_KEY_NAME: str = None
     REGEN_KEY_ADDRESS: str = None
     REGEN_RESOLVER_ID: int = None
     REGEN_CLI_COMMAND: str = None

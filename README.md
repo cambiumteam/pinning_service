@@ -26,3 +26,16 @@ A [resolver](https://docs.regen.network/modules/data/01_concepts.html#resolver) 
 ### Indexer
 
 Graph data that is anchored on-chain can optionally be indexed into an [Apache Jena](https://jena.apache.org/) graph database for more efficient retrieval and querying of data.
+
+## Development
+
+
+### Localnet
+
+The `Makefile` includes commands to start and configure a localnet for testing locally:
+
+`make localnet-start`: Start an existing or init a new localnet.
+`make localnet-configure`: Configure the localnet with keys and manager -> service account grants.
+`make localnet-stop`: Stop the localnet.
+`make localnet-clean`: Destroy the localnet, keys and data.
+`make -C localnet register-resolver`: Register data to the resolver using the service account. Can be used for testing.

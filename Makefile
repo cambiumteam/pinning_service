@@ -23,3 +23,27 @@ test:
 test-watch:
 	ptw
 
+################
+### LOCALNET ###
+################
+
+# Start an existing localnet or init a new one.
+localnet-start:
+		$(MAKE) -C localnet start
+
+# Configure the localnet keys and service account. Update .env to match.
+localnet-configure:
+		$(MAKE) -C localnet configure
+		@echo "Configuring .env for localnet"
+		cp .env.default .env
+		echo "REGEN_CHAIN_ID = \"$$(make -sC localnet localnet-chain-id)\"" >> .env
+		echo "REGEN_KEY_ADDRESS = \"$$(make -sC localnet keys-manager-address)\"" >> .env
+
+# Stop an existing localnet to start later.
+localnet-stop:
+		$(MAKE) -C localnet stop
+
+localnet-clean:
+		$(MAKE) -C localnet clean
+
+.PHONY: localnet-start localnet-configure localnet-stop localnet-clean
