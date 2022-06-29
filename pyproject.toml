@@ -19,6 +19,7 @@ websockets = "^10.3"
 asyncpg = "^0.25.0"
 procrastinate = "^0.24.1"
 base58 = "^2.1.1"
+httpx = "^0.23.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
