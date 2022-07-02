@@ -118,7 +118,7 @@ grant-service-account:
 		@echo "Granting service account: authz /regen.data.v1.MsgRegisterResolver"
 		$(REGEN) tx authz grant $(call get_key_address, $(SERVICE_KEY_NAME)) generic --msg-type /regen.data.v1.MsgRegisterResolver --from $(call get_key_address, $(MANAGER_KEY_NAME)) --chain-id $(call localnet_chain_id) --fees 2stake -y -b block $(KEYRING_ARGS)
 		@echo "Granting service account: feegrant /cosmos.authz.v1beta1.MsgExec,/regen.data.v1.MsgRegisterResolver"
-		$(REGEN) tx feegrant grant $(call get_key_address, $(MANAGER_KEY_NAME)) $(call get_key_address, $(SERVICE_KEY_NAME)) --spend-limit 100stake --allowed-messages /cosmos.authz.v1beta1.MsgExec,/regen.data.v1.MsgRegisterResolver --chain-id $(call localnet_chain_id) --fees 2stake -y -b block $(KEYRING_ARGS)
+		$(REGEN) tx feegrant grant $(call get_key_address, $(MANAGER_KEY_NAME)) $(call get_key_address, $(SERVICE_KEY_NAME)) --spend-limit 100stake --chain-id $(call localnet_chain_id) --fees 2stake -y -b block $(KEYRING_ARGS)
 
 # For testing: register data with a resolver from the service account using authz and feegrant.
 register-resolver:
