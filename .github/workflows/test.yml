@@ -36,3 +36,21 @@ jobs:
         run: |
           make -C localnet register-resolver
           test $(regen q data resolvers-by-iri regen:13toVgf5aZqSVSeJQv562xkkeoe3rr3bJWZgg1jJfnzPGBtJNpVVakm.rdf --output json | jq -r .resolvers[0].url) == http://localhost:8000/resource
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install deps
+        run: poetry install
+      - name: Start docker containers
+        run: |
+          docker compose -f docker/docker-compose.yml up -d
+          sleep 10
+      - name: Run tests
+        env:
+          REGEN_CLI_COMMAND: ""
+          REGEN_KEYRING_ARGS: "--keyring-backend test --keyring-dir localnet/keys"
+        run: |
+          poetry run pytest
