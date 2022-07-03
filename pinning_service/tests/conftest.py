@@ -51,3 +51,41 @@ def test_raw_content_hash() -> (ContentHash, str):
         media_type=RawMediaType.UNSPECIFIED,
     )
     return ContentHash(raw=content_hash_raw), "regen:113gdjFKcVCt13Za6vN7TtbgMM6LMSjRnu89BMCxeuHdkJ1hWUmy.binA"
+
+
+@pytest.fixture(scope="package")
+def test_jsonld_document() -> (str, str):
+    iri = "regen:13toVhbrVAb7VsP63rXcunZRrgefrBSx2x28yRH2gsEzcNdEo9MxuoN.rdf"
+    raw = """
+    {
+      "@context": {
+        "dc11": "http://purl.org/dc/elements/1.1/",
+        "ex": "http://example.org/vocab#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "ex:contains": {
+          "@type": "@id"
+        }
+      },
+      "@graph": [
+        {
+          "@id": "http://example.org/library",
+          "@type": "ex:Library",
+          "ex:contains": "http://example.org/library/the-republic"
+        },
+        {
+          "@id": "http://example.org/library/the-republic",
+          "@type": "ex:Book",
+          "ex:contains": "http://example.org/library/the-republic#introduction",
+          "dc11:creator": "Plato",
+          "dc11:title": "The Republic"
+        },
+        {
+          "@id": "http://example.org/library/the-republic#introduction",
+          "@type": "ex:Chapter",
+          "dc11:description": "An introductory chapter on The Republic.",
+          "dc11:title": "The Introduction"
+        }
+      ]
+    }
+    """
+    return raw, iri
