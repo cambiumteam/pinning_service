@@ -5,6 +5,7 @@ from collections.abc import Iterable
 
 from .config import get_settings
 from .content_hash import ContentHash
+from .iri import parse_iri
 
 settings = get_settings()
 
@@ -36,7 +37,10 @@ def generate_anchor_tx(
     }
 
 
-def anchor(content_hashes: Iterable[ContentHash]) -> TxHash:
+def anchor(iris: Iterable[str]) -> TxHash:
+
+    # Parse each resource's IRI into a content hash object.
+    content_hashes = [parse_iri(iri) for iri in iris]
 
     # Build anchoring message
     tx = generate_anchor_tx(
