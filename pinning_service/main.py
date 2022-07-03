@@ -16,7 +16,7 @@ app = FastAPI()
 
 
 @app.on_event("startup")
-async def startup():
+async def database_startup():
     create_tables()
     await database.connect()
 
