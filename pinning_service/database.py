@@ -22,3 +22,10 @@ resources = sqlalchemy.Table(
     sqlalchemy.Column("pinned_at", sqlalchemy.DateTime),
     sqlalchemy.Column("anchored_at", sqlalchemy.DateTime),
 )
+
+
+def create_tables():
+    engine = sqlalchemy.create_engine(
+        settings.SQLALCHEMY_DATABASE_URI
+    )
+    metadata.create_all(engine)
