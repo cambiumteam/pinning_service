@@ -107,7 +107,7 @@ async def resource_exists(digest: bytes) -> bool:
 
 
 # Create new resource.
-@router.post("/resource")
+@router.post("/resource", status_code=201)
 async def post_resource(
         data: Any = Body(..., media_type='application/ld+json'),
 ):
