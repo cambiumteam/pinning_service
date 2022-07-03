@@ -3,9 +3,10 @@ from os import environ
 # Set the TESTING environ before importing the app.
 environ['TESTING'] = 'True'
 
+from asgi_lifespan import LifespanManager
+from httpx import AsyncClient
 import pytest
 from sqlalchemy_utils import create_database, drop_database
-from fastapi.testclient import TestClient
 
 from pinning_service.content_hash import ContentHash, ContentHashGraph, ContentHashRaw, DigestAlgorithm, GraphCanonicalizationAlgorithm, GraphMerkleTree, RawMediaType
 from pinning_service.config import get_settings
@@ -13,6 +14,11 @@ from pinning_service.main import app
 
 
 settings = get_settings()
+
+
+@pytest.fixture
+def anyio_backend():
+    return 'asyncio'
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -24,9 +30,12 @@ def create_test_database():
     drop_database(url)
 
 
-@pytest.fixture()
-def client():
-    with TestClient(app) as client:
+@pytest.fixture(scope="function")
+async def client():
+
+    # Use httpx with LifespanManager to get an async test client.
+    # https://github.com/tiangolo/fastapi/issues/2003#issuecomment-801140731
+    async with AsyncClient(app=app, base_url="http://localhost") as client, LifespanManager(app):
         yield client
 
 
