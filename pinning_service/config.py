@@ -8,24 +8,36 @@ class Settings(BaseSettings):
     class Config:
         env_file = '.env'
 
+    TESTING: bool = False
+
     POSTGRES_SERVER: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
+
+    # Prefix the database name for tests.
     POSTGRES_DB: str
+    @validator("POSTGRES_DB", pre=True)
+    def prefix_db_tests(cls, v, values):
+        if values.get('TESTING'):
+            return f"test_{v}"
+        else:
+            return v
+
+
     # SQLALCHEMY_POOL_SIZE: int = 10
     # SQLALCHEMY_MAX_OVERFLOW: int = 15
     SQLALCHEMY_DATABASE_URI: PostgresDsn = None
-
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v, values):
         if isinstance(v, str):
             return v
+
         return PostgresDsn.build(
             scheme="postgresql",
             user=values.get("POSTGRES_USER"),
             password=values.get("POSTGRES_PASSWORD"),
             host=values.get("POSTGRES_SERVER"),
-            path=f"/{values.get('POSTGRES_DB') or ''}",
+            path=f"/{values.get('POSTGRES_DB')}",
         )
 
 

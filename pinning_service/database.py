@@ -6,8 +6,9 @@ from .config import get_settings
 # Settings dependency.
 settings = get_settings()
 
-# SQLite database.
-database = databases.Database(settings.SQLALCHEMY_DATABASE_URI)
+# Build the database object.
+# Do not persist database changes for tests. Rollback transactions once the database is disconnected.
+database = databases.Database(settings.SQLALCHEMY_DATABASE_URI, force_rollback=settings.TESTING)
 
 # Resource table.
 metadata = sqlalchemy.MetaData()

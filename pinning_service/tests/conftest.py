@@ -1,6 +1,33 @@
+from os import environ
+
+# Set the TESTING environ before importing the app.
+environ['TESTING'] = 'True'
+
 import pytest
+from sqlalchemy_utils import create_database, drop_database
+from fastapi.testclient import TestClient
 
 from pinning_service.content_hash import ContentHash, ContentHashGraph, ContentHashRaw, DigestAlgorithm, GraphCanonicalizationAlgorithm, GraphMerkleTree, RawMediaType
+from pinning_service.config import get_settings
+from pinning_service.main import app
+
+
+settings = get_settings()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_database():
+    url = settings.SQLALCHEMY_DATABASE_URI
+    assert "test_" in url
+    create_database(url)
+    yield
+    drop_database(url)
+
+
+@pytest.fixture()
+def client():
+    with TestClient(app) as client:
+        yield client
 
 
 # Use same content hash from regen ledger source.
