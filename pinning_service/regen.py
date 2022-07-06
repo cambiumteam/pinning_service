@@ -8,66 +8,61 @@ from .content_hash import ContentHash
 
 settings = get_settings()
 
-TxHash = NewType('TxHash', str)
-IRI = NewType('IRI', str)
-Address = NewType('Address', str)
+TxHash = NewType("TxHash", str)
+IRI = NewType("IRI", str)
+Address = NewType("Address", str)
 
 
-def generate_anchor_tx(sender: Address, resolver_id: int, content_hashes: Iterable[ContentHash]) -> dict:
+def generate_anchor_tx(
+    sender: Address,
+    resolver_id: int,
+    content_hashes: Iterable[ContentHash],
+) -> dict:
 
     # Convert content_hash to dict so they can be json encoded.
     content_hashes_list = [content_hash.dict() for content_hash in content_hashes]
 
     return {
         "body": {
-            "messages": [{
-                "@type": "/regen.data.v1.MsgRegisterResolver",
-                "manager": sender,
-                "resolver_id": resolver_id,
-                "content_hashes": content_hashes_list,
-            }],
-            "memo": "",
-            "timeout_height": "0",
-            "extension_options": [],
-            "non_critical_extension_options": []
+            "messages": [
+                {
+                    "@type": "/regen.data.v1.MsgRegisterResolver",
+                    "manager": sender,
+                    "resolver_id": resolver_id,
+                    "content_hashes": content_hashes_list,
+                }
+            ],
         },
-        "auth_info": {
-            "signer_infos": [],
-            "fee": {
-                "amount": [
-                    {"denom": "stake", "amount": "2"},
-                ],
-                "gas_limit": "200000",
-                "payer": "",
-                "granter": ""
-            }
-        },
-        "signatures": []
     }
 
 
 def anchor(content_hashes: Iterable[ContentHash]) -> TxHash:
 
-    # Build flags.
-    chain_id = f"--chain-id {settings.REGEN_CHAIN_ID}"
-    node = f"--node {settings.REGEN_NODE_TENDERMINT_RPC_URL}"
-    output = "--output json"
-    tx = generate_anchor_tx(settings.REGEN_KEY_ADDRESS, settings.REGEN_RESOLVER_ID, content_hashes)
-    sign_command = f"echo '{json.dumps(tx)}' | {settings.REGEN_CLI_COMMAND} regen tx sign /dev/stdin --from {settings.REGEN_KEY_ADDRESS} {settings.REGEN_KEYRING_ARGS} {chain_id} {node} {output}"
+    # Build anchoring message
+    tx = generate_anchor_tx(
+        sender=settings.REGEN_KEY_ADDRESS,
+        resolver_id=settings.REGEN_RESOLVER_ID,
+        content_hashes=content_hashes,
+    )
 
-    # Sign the transaction.
+    # Execute transaction from service account
+    flags = {
+        "--from": settings.REGEN_SERVICE_KEY_ADDRESS,
+        "--fee-account": settings.REGEN_KEY_ADDRESS,
+        "--gas-prices": f"{settings.REGEN_GAS_PRICES_AMOUNT:f}{settings.REGEN_GAS_PRICES_DENOM}",
+        "--broadcast-mode": "block",
+        "--yes": "",
+        "--chain-id": settings.REGEN_CHAIN_ID,
+        "--node": settings.REGEN_NODE_TENDERMINT_RPC_URL,
+        "--output": "json",
+    }
+    flags_str = str.join(" ", [f"{key} {val}" for key, val in flags.items()])
+    regen_command = f"{settings.REGEN_CLI_COMMAND} regen tx authz exec /dev/stdin {flags_str} {settings.REGEN_KEYRING_ARGS}"
+    execute_command = f"echo '{json.dumps(tx)}' | {regen_command}"
     try:
-        signed_tx = json.loads(os.popen(sign_command).read())
+        tx_result = json.loads(os.popen(execute_command).read())
     except Exception:
-        raise ValueError("Failed to sign transaction.")
-
-    # Broadcast transaction.
-    # @TODO: make use of regen config passing REGEN_HOME
-    broadcast_command = f"echo '{json.dumps(signed_tx)}' | {settings.REGEN_CLI_COMMAND} regen tx broadcast /dev/stdin --broadcast-mode block {chain_id} {node} {output}"
-    try:
-        tx_result = json.loads(os.popen(broadcast_command).read())
-    except Exception:
-        raise ValueError("Failed to broadcast transaction.")
+        raise ValueError("Failed to execute transaction.")
 
     # Check the transaction result to ensure it was successful.
     return get_successful_txhash(tx_result)
@@ -84,13 +79,23 @@ def get_successful_txhash(tx_result: dict) -> TxHash:
 
     # Ensure data was anchored.
     try:
-        next(event for event in log["events"] if event["type"] == "regen.data.v1.EventAnchor")
+        next(
+            event
+            for event in log["events"]
+            if event["type"] == "regen.data.v1.EventAnchor"
+        )
     except StopIteration:
-        raise ValueError("No anchor event from transaction. The data may already be anchored.")
+        raise ValueError(
+            "No anchor event from transaction. The data may already be anchored."
+        )
 
     # Ensure data was registered with the resolver.
     try:
-        next(event for event in log["events"] if event["type"] == "regen.data.v1.EventRegisterResolver")
+        next(
+            event
+            for event in log["events"]
+            if event["type"] == "regen.data.v1.EventRegisterResolver"
+        )
     except StopIteration:
         raise ValueError("No register event from transaction.")
 

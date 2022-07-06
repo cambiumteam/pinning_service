@@ -38,6 +38,7 @@ localnet-configure:
 		cp .env.default .env
 		echo "REGEN_CHAIN_ID = \"$$(make -sC localnet localnet-chain-id)\"" >> .env
 		echo "REGEN_KEY_ADDRESS = \"$$(make -sC localnet keys-manager-address)\"" >> .env
+		echo "REGEN_SERVICE_KEY_ADDRESS = \"$$(make -sC localnet keys-service-address)\"" >> .env
 
 # Stop an existing localnet to start later.
 localnet-stop:
@@ -46,4 +47,4 @@ localnet-stop:
 localnet-clean:
 		$(MAKE) -C localnet clean
 
-.PHONY: localnet-start localnet-configure localnet-stop localnet-clean
+.PHONY: localnet-start localnet-configure localnet-stop localnet-clean 
