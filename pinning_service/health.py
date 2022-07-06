@@ -3,6 +3,7 @@ import asyncio
 from httpx import AsyncClient, RequestError, HTTPStatusError
 from fastapi import APIRouter
 
+from .task_queue import get_task_list
 from .config import get_settings
 
 settings = get_settings()
@@ -24,6 +25,7 @@ async def health():
         "allowance": get_feegrant_allowance(session, manager_address, service_address),
         "balances": get_multiple_account_balances(session, [manager_address, service_address]),
         "latest_block_header": get_latest_block(session),
+        "pending_jobs": get_pending_jobs(),
     }
 
     # Collect all responses, keeping exceptions.
@@ -51,6 +53,7 @@ def clean_responses(response: any):
     elif isinstance(response, HTTPStatusError):
         return f"Invalid request. Ensure addresses are correctly configured and exist on-chain."
     elif isinstance(response, Exception):
+        print(response)
         return "Unknown error."
     else:
         return response
@@ -78,3 +81,7 @@ async def get_multiple_account_balances(session: AsyncClient, addresses: list[st
 async def get_account_balances(session: AsyncClient, address: str) -> list:
     response = await session.get(f"cosmos/bank/v1beta1/balances/{address}")
     return response.json().get("balances", [])
+
+
+async def get_pending_jobs() -> int:
+    return len(await get_task_list(status="todo"))

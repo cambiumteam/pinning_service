@@ -72,3 +72,8 @@ async def anchor_batch_task() -> None:
 async def anchor_batch_deferred():
     async with get_task_queue().open_async():
         await anchor_batch_task.defer_async()
+
+
+async def get_task_list(**kwargs):
+    app = await get_task_queue().open_async()
+    return await app.job_manager.list_jobs_async(**kwargs)

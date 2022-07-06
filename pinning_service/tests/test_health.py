@@ -37,3 +37,7 @@ def test_health():
 
     # Test for correct block header.
     assert int(health["latest_block_header"]["height"]) > 0, "latest block header is greater than 0"
+
+    # Test for pending jobs.
+    # TODO: Add pending jobs.
+    assert health["pending_jobs"] == 0, "no pending jobs"
