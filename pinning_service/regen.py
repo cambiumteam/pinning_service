@@ -81,12 +81,6 @@ def get_successful_txhash(tx_result: dict) -> TxHash:
     # Check that the proper events happened.
     log = next(log for log in tx_result["logs"] if log["msg_index"] == 0)
 
-    # Ensure data was anchored.
-    try:
-        next(event for event in log["events"] if event["type"] == "regen.data.v1.EventAnchor")
-    except StopIteration:
-        raise ValueError("No anchor event from transaction. The data may already be anchored.")
-
     # Ensure data was registered with the resolver.
     try:
         next(
