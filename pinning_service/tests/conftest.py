@@ -35,8 +35,9 @@ async def client():
 
     # Use httpx with LifespanManager to get an async test client.
     # https://github.com/tiangolo/fastapi/issues/2003#issuecomment-801140731
-    async with AsyncClient(app=app, base_url="http://localhost") as client, LifespanManager(app):
-        yield client
+    async with LifespanManager(app):
+        async with AsyncClient(app=app, base_url="http://localhost") as client:
+            yield client
 
 
 # Use same content hash from regen ledger source.
