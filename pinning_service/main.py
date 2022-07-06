@@ -5,6 +5,7 @@ import uvicorn
 from .config import get_settings
 from .database import database, metadata
 from .routing import router
+from .health import router as health_router
 
 # Settings dependency.
 settings = get_settings()
@@ -31,6 +32,7 @@ async def shutdown():
 
 # Add routes to app.
 app.include_router(router)
+app.include_router(health_router)
 
 
 # Run app.
