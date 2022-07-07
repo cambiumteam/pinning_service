@@ -38,7 +38,7 @@ async def anchor_batch_task() -> None:
     await database.connect()
 
     # Fetch resources that have no anchor attempts.
-    query = select([resources.c.iri]).where(resources.c.anchor_attempts == 0).limit(10)
+    query = select([resources.c.iri]).where(resources.c.txhash == None).limit(10)
     records = await database.fetch_all(query)
 
     if len(records) == 0:
