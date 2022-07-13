@@ -1,6 +1,43 @@
+from os import environ
+
+# Set the TESTING environ before importing the app.
+environ['TESTING'] = 'True'
+
+from asgi_lifespan import LifespanManager
+from httpx import AsyncClient
 import pytest
+from sqlalchemy_utils import create_database, drop_database
 
 from pinning_service.content_hash import ContentHash, ContentHashGraph, ContentHashRaw, DigestAlgorithm, GraphCanonicalizationAlgorithm, GraphMerkleTree, RawMediaType
+from pinning_service.config import get_settings
+from pinning_service.main import app
+
+
+settings = get_settings()
+
+
+@pytest.fixture
+def anyio_backend():
+    return 'asyncio'
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_database():
+    url = settings.SQLALCHEMY_DATABASE_URI
+    assert "test_" in url
+    create_database(url)
+    yield
+    drop_database(url)
+
+
+@pytest.fixture(scope="function")
+async def client():
+
+    # Use httpx with LifespanManager to get an async test client.
+    # https://github.com/tiangolo/fastapi/issues/2003#issuecomment-801140731
+    async with LifespanManager(app):
+        async with AsyncClient(app=app, base_url="http://localhost") as client:
+            yield client
 
 
 # Use same content hash from regen ledger source.
@@ -24,3 +61,41 @@ def test_raw_content_hash() -> (ContentHash, str):
         media_type=RawMediaType.UNSPECIFIED,
     )
     return ContentHash(raw=content_hash_raw), "regen:113gdjFKcVCt13Za6vN7TtbgMM6LMSjRnu89BMCxeuHdkJ1hWUmy.binA"
+
+
+@pytest.fixture(scope="package")
+def test_jsonld_document() -> (str, str):
+    iri = "regen:13toVhbrVAb7VsP63rXcunZRrgefrBSx2x28yRH2gsEzcNdEo9MxuoN.rdf"
+    raw = """
+    {
+      "@context": {
+        "dc11": "http://purl.org/dc/elements/1.1/",
+        "ex": "http://example.org/vocab#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "ex:contains": {
+          "@type": "@id"
+        }
+      },
+      "@graph": [
+        {
+          "@id": "http://example.org/library",
+          "@type": "ex:Library",
+          "ex:contains": "http://example.org/library/the-republic"
+        },
+        {
+          "@id": "http://example.org/library/the-republic",
+          "@type": "ex:Book",
+          "ex:contains": "http://example.org/library/the-republic#introduction",
+          "dc11:creator": "Plato",
+          "dc11:title": "The Republic"
+        },
+        {
+          "@id": "http://example.org/library/the-republic#introduction",
+          "@type": "ex:Chapter",
+          "dc11:description": "An introductory chapter on The Republic.",
+          "dc11:title": "The Introduction"
+        }
+      ]
+    }
+    """
+    return raw, iri

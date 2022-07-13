@@ -1,14 +1,12 @@
 import procrastinate
 from functools import lru_cache
-from datetime import datetime
 import traceback
 
 import sqlalchemy
 from sqlalchemy import select
 
 from .config import get_settings
-from .database import database, resources
-from .iri import parse_iri
+from .database import database, resources, update_iris_txhash
 from .regen import anchor
 
 settings = get_settings()
@@ -45,28 +43,17 @@ async def anchor_batch_task() -> None:
         print("All resources have been processed")
         return
 
-    # Parse each resource's IRI into a content hash object.
+    # Collect IRIs and anchor.
     iris = [record.iri for record in records]
-    content_hashes = [parse_iri(iri) for iri in iris]
-
     try:
-        txhash = anchor(content_hashes)
+        txhash = anchor(iris)
     except Exception:
         # @TODO: log issue
         traceback.print_exc()
         txhash = None
 
-    # Update the resources that were anchored.
-    update_query = resources.update(
-        resources.c.iri.in_(iris),
-        {
-            "txhash": txhash,
-            "anchor_attempts": resources.c.anchor_attempts + 1,
-            # @TODO: add UTC timezone
-            "anchored_at": datetime.now(),
-        },
-    )
-    await database.execute(update_query)
+    # @TODO: add UTC timezone
+    await update_iris_txhash(iris, txhash)
 
 
 async def anchor_batch_deferred():
